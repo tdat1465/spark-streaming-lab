@@ -1,0 +1,62 @@
+=== Starting CPG Parser Service ===
+Discovered CSV : C:\Users\biend\OneDrive\M�y t�nh\spark-streaming-lab\output\discovered_files.csv
+Repo Root      : C:\Users\biend\OneDrive\M�y t�nh\spark-streaming-lab\peft
+Kafka Brokers  : localhost:9092
+Schema Version : 1.0.0
+Dry Run Mode   : True
+
+Found 5 source files to parse.
+[1/5] Processing: docs\source\_config.py ... Parsed successfully (Nodes: 5, Edges: 6) [DRY RUN]
+
+--- SAMPLE NODE EVENT ---
+{
+  "id": "c497a51d-c0ad-5f8e-b20e-c6c29c746e36",
+  "type": "Module",
+  "label": "Module",
+  "file_path": "docs/source/_config.py",
+  "start_line": null,
+  "start_column": null,
+  "end_line": null,
+  "end_column": null,
+  "code": "",
+  "properties": {},
+  "schema_version": "1.0.0",
+  "event_time": "2026-07-15T15:27:38.488978Z"
+}
+
+--- SAMPLE EDGE EVENT ---
+{
+  "id": "810eb670-85ff-5a98-b383-c32acdc2f864",
+  "source_id": "c497a51d-c0ad-5f8e-b20e-c6c29c746e36",
+  "target_id": "909e4049-6859-5c41-80ed-022598c06caa",
+  "type": "AST",
+  "schema_version": "1.0.0",
+  "event_time": "2026-07-15T15:27:38.488978Z"
+}
+
+--- SAMPLE METADATA EVENT ---
+{
+  "id": "fbc8c700-7469-5400-898f-bd8616625351",
+  "file_path": "docs/source/_config.py",
+  "size_bytes": 287,
+  "sha256": "62bc147b19a03f310e079c3f03ada33aaf2d4f8c43a62a89d3917c2d54ebe0e2",
+  "num_lines": 7,
+  "processed_at": "2026-07-15T15:27:38.488978Z",
+  "status": "SUCCESS",
+  "schema_version": "1.0.0",
+  "event_time": "2026-07-15T15:27:38.488978Z"
+}
+-------------------------
+
+[2/5] Processing: examples\adamss_finetuning\glue_adamss_asa_example.py ... Parsed successfully (Nodes: 2222, Edges: 3931) [DRY RUN]
+[3/5] Processing: examples\adamss_finetuning\glue_adamss_asa_manual_example.py ... Parsed successfully (Nodes: 2175, Edges: 3781) [DRY RUN]
+[4/5] Processing: examples\adamss_finetuning\image_classification_adamss_asa.py ... Parsed successfully (Nodes: 2319, Edges: 4123) [DRY RUN]
+[5/5] Processing: examples\alora_finetuning\alora_finetuning.py ... Parsed successfully (Nodes: 1227, Edges: 2045) [DRY RUN]
+
+=== Parser Run Summary ===
+Total Source Files processed : 5
+Successfully Parsed          : 5
+Failed                       : 0
+Total Nodes emitted          : 7948
+Total Edges emitted          : 13886
+===========================

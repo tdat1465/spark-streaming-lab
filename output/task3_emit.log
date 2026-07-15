@@ -1,0 +1,23 @@
+=== Starting CPG Parser Service ===
+Discovered CSV : C:\Users\biend\OneDrive\M�y t�nh\spark-streaming-lab\output\discovered_files.csv
+Repo Root      : C:\Users\biend\OneDrive\M�y t�nh\spark-streaming-lab\peft
+Kafka Brokers  : localhost:9092
+Schema Version : 1.0.0
+Dry Run Mode   : False
+
+Found 5 source files to parse.
+[OK] Connected to Kafka Producer successfully.
+
+[1/5] Processing: docs\source\_config.py ... Parsed and Sent (Nodes: 5, Edges: 6)
+[2/5] Processing: examples\adamss_finetuning\glue_adamss_asa_example.py ... Parsed and Sent (Nodes: 2222, Edges: 3931)
+[3/5] Processing: examples\adamss_finetuning\glue_adamss_asa_manual_example.py ... Parsed and Sent (Nodes: 2175, Edges: 3781)
+[4/5] Processing: examples\adamss_finetuning\image_classification_adamss_asa.py ... Parsed and Sent (Nodes: 2319, Edges: 4123)
+[5/5] Processing: examples\alora_finetuning\alora_finetuning.py ... Parsed and Sent (Nodes: 1227, Edges: 2045)
+
+=== Parser Run Summary ===
+Total Source Files processed : 5
+Successfully Parsed          : 5
+Failed                       : 0
+Total Nodes emitted          : 7948
+Total Edges emitted          : 13886
+===========================
