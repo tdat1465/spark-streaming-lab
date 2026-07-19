@@ -1,13 +1,13 @@
 """
-task1/discover.py
+src/task1/discover.py
 
 Module phân loại và khám phá các tệp Python trong repository.
 
 Có thể sử dụng theo hai cách:
   - Import:
-        from task1.discover import scan_repo, build_dataframe, smoke_test
+        from src.task1.discover import scan_repo, build_dataframe, smoke_test
   - Chạy trực tiếp:
-        python3 task1/discover.py
+        python3 src/task1/discover.py
 """
 import csv
 import sys
@@ -220,4 +220,3 @@ if __name__ == "__main__":
     build_dataframe(REPO_ROOT, all_rel, cats, OUTPUT_DIR)
 
     print("\n[OK] Hoàn thành Task 1.")
-

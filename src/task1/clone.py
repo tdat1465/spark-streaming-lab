@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 REPO_URL  = "https://github.com/huggingface/peft.git"
-REPO_ROOT = Path(__file__).resolve().parent.parent / "peft"
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent / "peft"
 
 
 def clone_repo_if_needed(repo_root: Path, clone_url: str) -> None:
