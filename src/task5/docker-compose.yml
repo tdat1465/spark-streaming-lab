@@ -1,0 +1,22 @@
+version: "3.8"
+
+# Task 5 — MongoDB container
+# Dùng để lưu trữ metadata events từ Kafka topic "cpg-metadata"
+# Chạy: docker compose up -d
+# Dừng: docker compose down
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: cpg-mongodb
+    ports:
+      - "27017:27017"       # Expose ra localhost:27017 để Spark kết nối
+    environment:
+      MONGO_INITDB_DATABASE: peft_db
+    volumes:
+      - mongodb-data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongodb-data:
+    name: cpg-mongodb-data
