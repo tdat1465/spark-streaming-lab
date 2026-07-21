@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType
@@ -14,8 +15,9 @@ MONGO_BASE_URI   = "mongodb://127.0.0.1:27017"
 MONGO_DATABASE   = "peft_db"
 MONGO_COLLECTION = "source_metadata"
 
-# Đường dẫn thư mục checkpoint bắt buộc cho luồng streaming (fault-tolerance)
-CHECKPOINT_LOCATION = "./checkpoints/task5_metadata"
+# Đường dẫn tuyệt đối cho checkpoint (relative path gây lỗi trên Windows)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+CHECKPOINT_LOCATION = str(_PROJECT_ROOT / "checkpoints" / "task5_metadata")
 os.makedirs(CHECKPOINT_LOCATION, exist_ok=True)
 
 # 2. Khởi tạo Spark Session
@@ -24,7 +26,7 @@ spark = SparkSession.builder \
     .appName("Task5_MetadataIngestion") \
     .config("spark.jars.packages",
             "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,"
-            "org.mongodb.spark:mongo-spark-connector_2.12:10.2.1") \
+            "org.mongodb.spark:mongo-spark-connector_2.12:10.3.0") \
     .config("spark.mongodb.write.connection.uri", MONGO_BASE_URI) \
     .config("spark.mongodb.write.database",       MONGO_DATABASE) \
     .config("spark.mongodb.write.collection",     MONGO_COLLECTION) \
