@@ -16,8 +16,9 @@ import sys
 import datetime
 from pathlib import Path
 
-# ── Đường dẫn cơ sở ───────────────────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).resolve().parent.parent   # spark-streaming-lab/
+# ── Đường dẫn cơ sở ─────────────────────────────────────────────────────────────────
+SRC_ROOT     = Path(__file__).resolve().parent.parent   # src/
+PROJECT_ROOT = SRC_ROOT.parent                          # spark-streaming-lab/
 REPO_ROOT    = PROJECT_ROOT / "peft"
 OUTPUT_DIR   = PROJECT_ROOT / "output"
 RECORD_FILE  = OUTPUT_DIR / "mutated_file.txt"

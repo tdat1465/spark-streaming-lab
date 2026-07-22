@@ -301,7 +301,9 @@ def main():
                 key_serializer=lambda k: k.encode("utf-8") if k else None,
                 acks="all",
                 retries=5,
-                request_timeout_ms=30000
+                request_timeout_ms=30000,
+                # Fix cho Windows Docker Desktop: bỏ qua auto-detect API version
+                api_version=(2, 6, 0),
             )
             print("[OK] Connected to Kafka Producer successfully.\n")
         except Exception as e:

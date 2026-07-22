@@ -198,7 +198,8 @@ def smoke_test():
 
 # Chạy trực tiếp 
 if __name__ == "__main__":
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    # task1/discover.py -> parent=task1, parent.parent=src, parent.parent.parent=spark-streaming-lab
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
     REPO_ROOT = PROJECT_ROOT / "peft"
     OUTPUT_DIR = PROJECT_ROOT / "output"
 

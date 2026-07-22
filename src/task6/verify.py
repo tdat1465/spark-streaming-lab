@@ -37,10 +37,11 @@ except ImportError:
     MongoClient = None
 
 # ── Cấu hình ──────────────────────────────────────────────────────────────────
-PROJECT_ROOT     = Path(__file__).resolve().parent.parent
+SRC_ROOT         = Path(__file__).resolve().parent.parent   # src/
+PROJECT_ROOT     = SRC_ROOT.parent                          # spark-streaming-lab/
 RECORD_FILE      = PROJECT_ROOT / "output" / "mutated_file.txt"
 # Checkpoint nằm ở thư mục gốc của project (spark-streaming-lab/checkpoints)
-CHECKPOINT_DIR   = PROJECT_ROOT.parent / "checkpoints" / "task5_metadata"
+CHECKPOINT_DIR   = PROJECT_ROOT / "checkpoints" / "task5_metadata"
 
 NEO4J_URI        = "bolt://localhost:7687"
 NEO4J_USER       = "neo4j"

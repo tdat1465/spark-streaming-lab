@@ -19,26 +19,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-# ── Đường dẫn cơ sở ───────────────────────────────────────────────────────────
-PROJECT_ROOT    = Path(__file__).resolve().parent.parent
-PARSER_SCRIPT   = PROJECT_ROOT / "cpg_parser.py"
-REPO_ROOT       = PROJECT_ROOT / "peft"
+# ── Đường dẫn cơ sở ─────────────────────────────────────────────────────────────────
+SRC_ROOT        = Path(__file__).resolve().parent.parent
+PROJECT_ROOT    = SRC_ROOT.parent                       # spark-streaming-lab/
+PARSER_SCRIPT   = SRC_ROOT / "cpg_parser.py"            # src/cpg_parser.py
+REPO_ROOT       = PROJECT_ROOT / "peft"                  # spark-streaming-lab/peft/
 RECORD_FILE     = PROJECT_ROOT / "output" / "mutated_file.txt"
 KAFKA_BOOTSTRAP = "localhost:9092"
 SCHEMA_VERSION  = "1.0.0"
 
 
 def find_python() -> str:
-    import os
-    candidates = [
-        os.path.join(os.path.expanduser("~"), "miniconda3",  "bin", "python3"),
-        os.path.join(os.path.expanduser("~"), "anaconda3",   "bin", "python3"),
-        os.path.join(os.path.expanduser("~"), "miniforge3",  "bin", "python3"),
-    ]
-    for c in candidates:
-        if os.path.exists(c):
-            return c
-    return sys.executable
+    return sys.executable  # Dùng Python đang chạy để đảm bảo đúng env/packages
 
 
 if __name__ == "__main__":
@@ -69,7 +61,7 @@ if __name__ == "__main__":
         "--schema-version",    SCHEMA_VERSION,
     ]
 
-    result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
+    result = subprocess.run(cmd, cwd=str(SRC_ROOT))
 
     if result.returncode != 0:
         print(f"[LỖI] cpg_parser.py thất bại (exit code: {result.returncode})")
