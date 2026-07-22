@@ -1,0 +1,269 @@
+digraph Architecture {
+    rankdir=TB;
+    splines=ortho;
+    nodesep=0.6;
+    ranksep=0.6;
+    
+    node [
+        shape=box,
+        style="filled,rounded",
+        fontname="Arial",
+        fontsize=11,
+        margin="0.25,0.15"
+    ];
+    
+    edge [
+        fontname="Arial",
+        fontsize=9,
+        arrowsize=0.6
+    ];
+
+    // ============================================================
+    // TITLE
+    // ============================================================
+    title [
+        label="Architecture Diagram: End-to-End CPG Streaming Pipeline",
+        shape=plaintext,
+        fontsize=22,
+        fontweight=bold,
+        fontcolor="#1A73E8"
+    ];
+
+    // ============================================================
+    // LAYER 1: SOURCE LAYER (Task 1)
+    // ============================================================
+    subgraph cluster_source {
+        label="Source Layer (Task 1)";
+        style=filled;
+        color="#1A73E8";
+        fontcolor="#1A73E8";
+        fontsize=13;
+        fontweight=bold;
+        fillcolor="#F0F7FF";
+        
+        repo [
+            label="huggingface/peft\n431 .py files",
+            shape=folder,
+            fillcolor="#D2E3FC"
+        ];
+        
+        discover [
+            label="File Discovery\nScan & Classify\n309 source\n63 test\n59 setup\n0 auto-generated",
+            fillcolor="#D2E3FC"
+        ];
+        
+        csv [
+            label="discovered_files.csv\n(path, size, lines, category)",
+            fillcolor="#D2E3FC"
+        ];
+        
+        repo -> discover [label="      rglob *.py"];
+        discover -> csv [label="export"];
+    }
+
+    // ============================================================
+    // LAYER 2: PARSER LAYER (Task 2)
+    // ============================================================
+    subgraph cluster_parser {
+        label="Parser Layer (Task 2)";
+        style=filled;
+        color="#1E8E3E";
+        fontcolor="#1E8E3E";
+        fontsize=13;
+        fontweight=bold;
+        fillcolor="#F0FFF4";
+        
+        parser [
+            label="cpg_parser.py\n(ast Module)\nIncremental Processing\nStable UUIDv5",
+            fillcolor="#D4EDDA"
+        ];
+        
+        ast [label="AST Nodes", fillcolor="#D4EDDA"];
+        cfg [label="CFG Edges", fillcolor="#D4EDDA"];
+        dfg [label="DFG Edges", fillcolor="#D4EDDA"];
+        call [label="CALL Edges", fillcolor="#D4EDDA"];
+        metadata [label="Metadata\n(sha256, lines)", fillcolor="#D4EDDA"];
+        
+        parser -> ast [label="extract"];
+        parser -> cfg [label="extract"];
+        parser -> dfg [label="extract"];
+        parser -> call [label="extract"];
+        parser -> metadata [label="extract"];
+    }
+
+    // ============================================================
+    // LAYER 3: KAFKA MESSAGE BROKER (Task 3)
+    // ============================================================
+    subgraph cluster_kafka {
+        label="Message Broker (Task 3)";
+        style=filled;
+        color="#E37400";
+        fontcolor="#E37400";
+        fontsize=13;
+        fontweight=bold;
+        fillcolor="#FFF8F0";
+        
+        topic_nodes [
+            label="cpg-nodes\n(Topic)",
+            shape=cylinder,
+            fillcolor="#FEE9D6"
+        ];
+        
+        topic_edges [
+            label="cpg-edges\n(Topic)",
+            shape=cylinder,
+            fillcolor="#FEE9D6"
+        ];
+        
+        topic_metadata [
+            label="cpg-metadata\n(Topic)",
+            shape=cylinder,
+            fillcolor="#FEE9D6"
+        ];
+        
+        topic_errors [
+            label="cpg-errors\n(Topic)",
+            shape=cylinder,
+            fillcolor="#FEE9D6"
+        ];
+        
+        ast -> topic_nodes [label="emit"];
+        cfg -> topic_edges [label="emit"];
+        dfg -> topic_edges [label="emit"];
+        call -> topic_edges [label="emit"];
+        metadata -> topic_metadata [label="emit"];
+        parser -> topic_errors [label="parse error", style="dashed"];
+    }
+
+    // ============================================================
+    // LAYER 4A: NEO4J GRAPH DATABASE (Task 4)
+    // ============================================================
+    subgraph cluster_neo4j {
+        label="Graph Database (Task 4)";
+        style=filled;
+        color="#D93025";
+        fontcolor="#D93025";
+        fontsize=13;
+        fontweight=bold;
+        fillcolor="#FFF4F2";
+        
+        kafka_connect [
+            label="Kafka Connect\nNeo4j Sink\nMERGE (idempotent)\nNo duplicate nodes",
+            fillcolor="#FAD9D6"
+        ];
+        
+        neo4j [
+            label="Neo4j (Graph DB)\n\n7200 nodes\n12830 edges\n\nAST: 7195\nCFG: 4748\nDFG: 517\nCALL: 370",
+            shape=database,
+            fillcolor="#FAD9D6"
+        ];
+        
+        topic_nodes -> kafka_connect [label="subscribe"];
+        topic_edges -> kafka_connect [label="    subscribe"];
+        kafka_connect -> neo4j [label="ingest", color="#D93025"];
+    }
+
+    // ============================================================
+    // LAYER 4B: MONGODB DOCUMENT DATABASE (Task 5)
+    // ============================================================
+    subgraph cluster_mongodb {
+        label="Document Database (Task 5)";
+        style=filled;
+        color="#1A73E8";
+        fontcolor="#1A73E8";
+        fontsize=13;
+        fontweight=bold;
+        fillcolor="#F0F7FF";
+        
+        spark [
+            label="Spark Structured Streaming\n10s trigger\nexactly-once",
+            fillcolor="#D2E3FC"
+        ];
+        
+        mongodb [
+            label="MongoDB\npeft_db.source_metadata\n6 documents",
+            shape=database,
+            fillcolor="#D2E3FC"
+        ];
+        
+        checkpoint [
+            label="Spark Checkpoint\nFault Tolerance\nOffset recovery",
+            fillcolor="#D2E3FC"
+        ];
+        
+        topic_metadata -> spark [label="subscribe"];
+        spark -> mongodb [label="append"];
+        spark -> checkpoint [label="state", style="dashed"];
+    }
+
+    // ============================================================
+    // LAYER 5: IDEMPOTENT REPLAY VERIFICATION (Task 6)
+    // ============================================================
+    subgraph cluster_idempotent {
+        label="Idempotent Replay Verification (Task 6)";
+        style=filled;
+        color="#1E8E3E";
+        fontcolor="#1E8E3E";
+        fontsize=13;
+        fontweight=bold;
+        fillcolor="#F0FFF4";
+        
+        mutate [
+            label="mutate.py\n(Modify file)\nsrc/peft/__init__.py",
+            fillcolor="#D4EDDA"
+        ];
+        
+        replay [
+            label="replay.py\n(Re-emit events)",
+            fillcolor="#D4EDDA"
+        ];
+        
+        verify [
+            label="verify.py\n(Check 3 invariants)\n[A] no duplicate\n[B] updated\n[C] offset",
+            fillcolor="#D4EDDA"
+        ];
+        
+        mutate -> replay [label="1. file changed (SHA-256)"];
+        replay -> verify [label="2. emit to Kafka"];
+    }
+
+    // ============================================================
+    // CONNECTIONS BETWEEN LAYERS
+    // ============================================================
+    csv -> parser [label="       309 source files", penwidth=2, color="#1A73E8"];
+    
+    repo -> mutate [label="sua 1 file", style="dashed", color="#1E8E3E"];
+    replay -> parser [label="goi lai parser", style="dashed", color="#1E8E3E"];
+    
+    verify -> neo4j [label="[A] no duplicate", style="dashed", color="#1E8E3E"];
+    verify -> mongodb [label="[B] updated", style="dashed", color="#1E8E3E"];
+    verify -> checkpoint [label="[C] offset", style="dashed", color="#1E8E3E"];
+
+    // ============================================================
+    // LEGEND
+    // ============================================================
+    subgraph cluster_legend {
+        label="Legend";
+        style=filled;
+        color="#999999";
+        fontcolor="#333333";
+        fontsize=12;
+        fontweight=bold;
+        fillcolor="#F5F5F5";
+        
+        node [
+            shape=note,
+            fontsize=10,
+            fontcolor="#555555",
+            fillcolor="#F5F5F5"
+        ];
+        
+        legend1 [label="Box = Component / Service"];
+        legend2 [label="Cylinder = Kafka Topic"];
+        legend3 [label="Database = Neo4j / MongoDB"];
+        legend4 [label="Dashed = Verification / Replay"];
+        legend5 [label="File = CSV output"];
+        
+        legend1 -> legend2 -> legend3 -> legend4 -> legend5 [style="invis"];
+    }
+}
