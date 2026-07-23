@@ -14,7 +14,7 @@ DISCOVERED_CSV = PROJECT_ROOT / "output" / "discovered_files.csv"
 REPO_ROOT = PROJECT_ROOT / "peft"
 OUTPUT_DIR = PROJECT_ROOT / "output"
 
-KAFKA_BOOTSTRAP = "localhost:9092"
+KAFKA_BOOTSTRAP = "127.0.0.1:9092"
 KAFKA_CONTAINER = "cpg-kafka"
 SCHEMA_VERSION = "1.0.0"
 DEMO_LIMIT = 5

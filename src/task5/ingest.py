@@ -5,7 +5,8 @@ from pyspark.sql.functions import col, from_json
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType
 
 # 1. Khai báo các biến cấu hình môi trường
-KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
+# Chú ý: Dùng 127.0.0.1 thay vì localhost để ép WSL dùng IPv4 kết nối tới Docker Windows
+KAFKA_BOOTSTRAP_SERVERS = "127.0.0.1:9092"
 KAFKA_TOPIC = "cpg-metadata"  # Topic nhận metadata sự kiện từ cpg_parser.py
 
 # Cấu hình MongoDB — MongoDB Spark Connector v10.x yêu cầu tách riêng:
@@ -70,6 +71,8 @@ query = parsed_df.writeStream \
     .option("spark.mongodb.write.connection.uri",  MONGO_BASE_URI) \
     .option("spark.mongodb.write.database",        MONGO_DATABASE) \
     .option("spark.mongodb.write.collection",      MONGO_COLLECTION) \
+    .option("spark.mongodb.write.operationType",   "update") \
+    .option("spark.mongodb.write.idFieldList",     "file_path") \
     .outputMode("append") \
     .trigger(processingTime="10 seconds") \
     .start()
