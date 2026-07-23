@@ -4,12 +4,12 @@ import os
 from pathlib import Path
 
 # Đường dẫn đến các tệp và thư mục cần thiết
-# src/task4/emit.py → parent = src/task4, parent.parent = src  (cpg_parser.py nằm trong src/)
-PROJECT_ROOT    = Path(__file__).resolve().parent.parent
-PARSER_SCRIPT   = PROJECT_ROOT / "cpg_parser.py"
+SRC_ROOT        = Path(__file__).resolve().parent.parent
+PROJECT_ROOT    = SRC_ROOT.parent
+PARSER_SCRIPT   = SRC_ROOT / "task2" / "cpg_parser.py"
 # peft/ và output/ đã được di chuyển lên spark-streaming-lab/ (ra ngoài src/)
-DISCOVERED_CSV  = PROJECT_ROOT.parent / "output" / "discovered_files.csv"
-REPO_ROOT       = PROJECT_ROOT.parent / "peft"
+DISCOVERED_CSV  = PROJECT_ROOT / "output" / "discovered_files.csv"
+REPO_ROOT       = PROJECT_ROOT / "peft"
 KAFKA_BOOTSTRAP = "localhost:9092"
 SCHEMA_VERSION  = "1.0.0"
 LIMIT           = 5
@@ -39,7 +39,7 @@ if __name__ == "__main__":
         "--schema-version", SCHEMA_VERSION,
     ]
 
-    result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
+    result = subprocess.run(cmd, cwd=str(PROJECT_ROOT), encoding="utf-8", errors="replace")
 
     if result.returncode != 0:
         print(f"[LỖI] Trình phân tích gặp lỗi (mã thoát: {result.returncode})")

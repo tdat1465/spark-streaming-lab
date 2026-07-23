@@ -122,7 +122,7 @@ scripts/log_reports.py,4926,source,144
 scripts/stale.py,2402,source,65
 scripts/train_memory.py,11185,source,276
 setup.py,4845,setup,117
-src/peft/__init__.py,8022,setup,324
+src/peft/__init__.py,7913,setup,321
 src/peft/auto.py,9431,source,225
 src/peft/config.py,17511,source,408
 src/peft/functional.py,1318,source,34

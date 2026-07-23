@@ -1,0 +1,18 @@
+# Core dependencies for Lab 04 - Spark Streaming pipeline
+pandas>=2.0.0
+kafka-python>=2.0.2
+requests>=2.31.0
+neo4j>=5.14.0
+pymongo>=4.6.0
+
+# Spark Structured Streaming (Task 5)
+pyspark==3.5.0
+
+# Notebook & Jupyter Book publishing
+jupyter-book>=1.0.0,<2.0.0
+jupyterlab>=4.0.0
+ipykernel>=6.29.0
+matplotlib>=3.8.0
+
+# Testing
+pytest>=8.0.0

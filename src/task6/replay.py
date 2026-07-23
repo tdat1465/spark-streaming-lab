@@ -22,7 +22,7 @@ from pathlib import Path
 # ── Đường dẫn cơ sở ─────────────────────────────────────────────────────────────────
 SRC_ROOT        = Path(__file__).resolve().parent.parent
 PROJECT_ROOT    = SRC_ROOT.parent                       # spark-streaming-lab/
-PARSER_SCRIPT   = SRC_ROOT / "cpg_parser.py"            # src/cpg_parser.py
+PARSER_SCRIPT   = SRC_ROOT / "task2" / "cpg_parser.py"
 REPO_ROOT       = PROJECT_ROOT / "peft"                  # spark-streaming-lab/peft/
 RECORD_FILE     = PROJECT_ROOT / "output" / "mutated_file.txt"
 KAFKA_BOOTSTRAP = "localhost:9092"
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         "--schema-version",    SCHEMA_VERSION,
     ]
 
-    result = subprocess.run(cmd, cwd=str(SRC_ROOT))
+    result = subprocess.run(cmd, cwd=str(PROJECT_ROOT), encoding="utf-8", errors="replace")
 
     if result.returncode != 0:
         print(f"[LỖI] cpg_parser.py thất bại (exit code: {result.returncode})")

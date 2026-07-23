@@ -1,6 +1,6 @@
 === Starting CPG Parser Service ===
-Discovered CSV : D:\_STUDY\BigData\Lab\Lab4\code\spark-streaming-lab\output\discovered_files.csv
-Repo Root      : D:\_STUDY\BigData\Lab\Lab4\code\spark-streaming-lab\peft
+Discovered CSV : D:\Old\spark-streaming-lab\output\discovered_files.csv
+Repo Root      : D:\Old\spark-streaming-lab\peft
 Kafka Brokers  : localhost:9092
 Schema Version : 1.0.0
 Dry Run Mode   : True
@@ -21,7 +21,7 @@ Found 5 source files to parse.
   "code": "",
   "properties": {},
   "schema_version": "1.0.0",
-  "event_time": "2026-07-22T11:52:38.066421Z"
+  "event_time": "2026-07-23T14:49:18.654055Z"
 }
 
 --- SAMPLE EDGE EVENT ---
@@ -31,7 +31,7 @@ Found 5 source files to parse.
   "target_id": "909e4049-6859-5c41-80ed-022598c06caa",
   "type": "AST",
   "schema_version": "1.0.0",
-  "event_time": "2026-07-22T11:52:38.066421Z"
+  "event_time": "2026-07-23T14:49:18.654055Z"
 }
 
 --- SAMPLE METADATA EVENT ---
@@ -41,10 +41,10 @@ Found 5 source files to parse.
   "size_bytes": 287,
   "sha256": "62bc147b19a03f310e079c3f03ada33aaf2d4f8c43a62a89d3917c2d54ebe0e2",
   "num_lines": 7,
-  "processed_at": "2026-07-22T11:52:38.066421Z",
+  "processed_at": "2026-07-23T14:49:18.654055Z",
   "status": "SUCCESS",
   "schema_version": "1.0.0",
-  "event_time": "2026-07-22T11:52:38.066421Z"
+  "event_time": "2026-07-23T14:49:18.654055Z"
 }
 -------------------------
 
