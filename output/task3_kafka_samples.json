@@ -1,11 +1,12 @@
 {
   "cpg-nodes": {
-    "key": "c497a51d-c0ad-5f8e-b20e-c6c29c746e36",
+    "key": "b5453b47-07b0-5ad7-beb3-42b79396bb76",
     "value": {
-      "id": "c497a51d-c0ad-5f8e-b20e-c6c29c746e36",
+      "id": "b5453b47-07b0-5ad7-beb3-42b79396bb76",
       "type": "Module",
       "label": "Module",
       "file_path": "docs/source/_config.py",
+      "ast_path": "Module@0:0-0:0",
       "start_line": null,
       "start_column": null,
       "end_line": null,
@@ -13,18 +14,18 @@
       "code": "",
       "properties": {},
       "schema_version": "1.0.0",
-      "event_time": "2026-07-15T13:50:44.819757Z"
+      "event_time": "2026-07-24T06:41:16.914129Z"
     }
   },
   "cpg-edges": {
-    "key": "810eb670-85ff-5a98-b383-c32acdc2f864",
+    "key": "5a01cb7a-4332-5df7-8964-570b8f7935a6",
     "value": {
-      "id": "810eb670-85ff-5a98-b383-c32acdc2f864",
-      "source_id": "c497a51d-c0ad-5f8e-b20e-c6c29c746e36",
-      "target_id": "909e4049-6859-5c41-80ed-022598c06caa",
+      "id": "5a01cb7a-4332-5df7-8964-570b8f7935a6",
+      "source_id": "b5453b47-07b0-5ad7-beb3-42b79396bb76",
+      "target_id": "b8030daa-556d-5866-a3e1-dba25a7acfaa",
       "type": "AST",
       "schema_version": "1.0.0",
-      "event_time": "2026-07-15T13:50:44.819757Z"
+      "event_time": "2026-07-24T06:41:16.914129Z"
     }
   },
   "cpg-metadata": {
@@ -35,10 +36,10 @@
       "size_bytes": 287,
       "sha256": "62bc147b19a03f310e079c3f03ada33aaf2d4f8c43a62a89d3917c2d54ebe0e2",
       "num_lines": 7,
-      "processed_at": "2026-07-15T13:50:44.819757Z",
+      "processed_at": "2026-07-24T06:41:16.914129Z",
       "status": "SUCCESS",
       "schema_version": "1.0.0",
-      "event_time": "2026-07-15T13:50:44.819757Z"
+      "event_time": "2026-07-24T06:41:16.914129Z"
     }
   }
 }

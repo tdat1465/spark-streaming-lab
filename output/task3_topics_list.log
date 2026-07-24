@@ -1,4 +1,7 @@
 __consumer_offsets
+connect-configs
+connect-offsets
+connect-status
 cpg-edges
 cpg-errors
 cpg-metadata
