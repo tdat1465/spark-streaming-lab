@@ -153,7 +153,7 @@ digraph Architecture {
         ];
         
         neo4j [
-            label="Neo4j (Graph DB)\n\n7200 nodes\n12830 edges\n\nAST: 7195\nCFG: 4748\nDFG: 517\nCALL: 370",
+            label="Neo4j (Graph DB)\n\n15148 nodes\n26780 edges\n\nAST: 15138\nCFG: 9791\nDFG: 1106\nCALL: 745",
             shape=database,
             fillcolor="#FAD9D6"
         ];
@@ -181,7 +181,7 @@ digraph Architecture {
         ];
         
         mongodb [
-            label="MongoDB\npeft_db.source_metadata\n6 documents",
+            label="MongoDB\npeft_db.source_metadata\n0 documents",
             shape=database,
             fillcolor="#D2E3FC"
         ];
