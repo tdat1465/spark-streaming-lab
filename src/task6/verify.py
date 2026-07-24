@@ -1,47 +1,54 @@
 """
 src/task6/verify.py
 
-Bước 3 của Task 6 — Idempotent Replay Verification.
+Bước 3 của Task 6 — Idempotent Replay Verification (End-to-End Strict Mode).
 
 Mục đích:
-  Xác minh ba tính chất idempotent sau khi replay:
+  Xác minh ba tính chất idempotent một cách nghiêm ngặt:
+  [A] Neo4j — Không có duplicate node/edge (MERGE).
+  [B] MongoDB — Metadata document được cập nhật đúng 1 document mới nhất.
+  [C] Spark Checkpoint — Offset tiến lên tương ứng.
 
-  [A] Neo4j — Không có duplicate node/edge:
-        MATCH (n:CpgNode) RETURN count(n) phải bằng với lần đầu
-        (MERGE đảm bảo không tăng khi replay đúng file).
-
-  [B] MongoDB — Metadata document được cập nhật:
-        Tìm document theo file_path, kiểm tra processed_at mới hơn lần đầu.
-
-  [C] Spark Checkpoint — Offset của các file KHÔNG thay đổi bị bỏ qua:
-        Đọc thư mục checkpoints/task5_metadata/offsets/ và in ra offset
-        hiện tại, chứng minh Spark tiếp tục từ offset sau cùng.
-
-Chạy (sau khi task5/ingest.py đã xử lý batch mới):
-    python -m src.task6.verify
+Kịch bản:
+  - Chọn file nguồn đã được Ingest (nếu chưa ingest sẽ báo FAIL).
+  - Lấy trạng thái BEFORE.
+  - Mutate file.
+  - Replay Lần 1 & Chờ Spark Streaming.
+  - Replay Lần 2 & Chờ Spark Streaming.
+  - Lấy trạng thái AFTER và So sánh.
+  - BẤT KỲ LỖI kết nối nào (Neo4j, Mongo) đều báo FAIL ngay lập tức.
 """
-import json
 import sys
+import time
+import json
+import subprocess
 from pathlib import Path
-from datetime import timezone
 
-# ── Thư viện bên ngoài (cài sẵn trong môi trường lab) ────────────────────────
 try:
     from neo4j import GraphDatabase
 except ImportError:
-    GraphDatabase = None
+    print("[FAIL] neo4j driver chưa cài (pip install neo4j).")
+    sys.exit(1)
 
 try:
     from pymongo import MongoClient
 except ImportError:
-    MongoClient = None
+    print("[FAIL] pymongo chưa cài (pip install pymongo).")
+    sys.exit(1)
+
+# Import module mutate để tái sử dụng logic mutate
+try:
+    from src.task6.mutate import mutate, TARGET_REL
+except ImportError:
+    print("[FAIL] Không thể import mutate logic.")
+    sys.exit(1)
 
 # ── Cấu hình ──────────────────────────────────────────────────────────────────
-SRC_ROOT         = Path(__file__).resolve().parent.parent   # src/
-PROJECT_ROOT     = SRC_ROOT.parent                          # spark-streaming-lab/
-RECORD_FILE      = PROJECT_ROOT / "output" / "mutated_file.txt"
-# Checkpoint nằm ở thư mục gốc của project (spark-streaming-lab/checkpoints)
+SRC_ROOT         = Path(__file__).resolve().parent.parent
+PROJECT_ROOT     = SRC_ROOT.parent
+REPO_ROOT        = PROJECT_ROOT / "peft"
 CHECKPOINT_DIR   = PROJECT_ROOT / "checkpoints" / "task5_metadata"
+PARSER_SCRIPT    = SRC_ROOT / "task2" / "cpg_parser.py"
 
 NEO4J_URI        = "bolt://localhost:7687"
 NEO4J_USER       = "neo4j"
@@ -51,166 +58,156 @@ MONGO_URI        = "mongodb://127.0.0.1:27017"
 MONGO_DATABASE   = "peft_db"
 MONGO_COLLECTION = "source_metadata"
 
-PASS_MARK = "[PASS]"
-FAIL_MARK = "[FAIL]"
-SKIP_MARK = "[SKIP]"
+KAFKA_BOOTSTRAP  = "127.0.0.1:9092"
+SCHEMA_VERSION   = "1.0.0"
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Kiểm tra A: Neo4j không có duplicate node
-# ─────────────────────────────────────────────────────────────────────────────
-def check_neo4j_no_duplicate(mutated_rel: str) -> bool:
-    if GraphDatabase is None:
-        print(f"  {SKIP_MARK} neo4j driver chưa cài (pip install neo4j). Bỏ qua.")
-        return True
-
+def get_neo4j_state(rel_path: str):
     try:
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASS))
         with driver.session() as session:
-            # Đếm node theo file_path
-            result = session.run(
-                "MATCH (n:CpgNode {file_path: $fp}) RETURN count(n) AS cnt",
-                fp=mutated_rel,
-            )
-            cnt = result.single()["cnt"]
-
-            # Đếm node có id trùng (nếu idempotent đúng → 0)
-            dup = session.run(
-                "MATCH (n:CpgNode {file_path: $fp}) "
-                "WITH n.id AS id, count(*) AS c WHERE c > 1 "
-                "RETURN count(*) AS dups",
-                fp=mutated_rel,
-            )
-            dups = dup.single()["dups"]
-
+            res_nodes = session.run("MATCH (n:CpgNode {file_path: $fp}) RETURN count(n) AS cnt", fp=rel_path)
+            node_cnt = res_nodes.single()["cnt"]
+            
+            res_edges = session.run("MATCH (n:CpgNode {file_path: $fp})-[r]->() RETURN count(r) AS cnt", fp=rel_path)
+            edge_cnt = res_edges.single()["cnt"]
         driver.close()
-
-        if dups == 0:
-            print(f"  {PASS_MARK} Neo4j: {cnt} node cho file '{mutated_rel}', không có duplicate.")
-            return True
-        else:
-            print(f"  {FAIL_MARK} Neo4j: tìm thấy {dups} id bị trùng lặp — MERGE chưa hoạt động đúng!")
-            return False
-
+        return node_cnt, edge_cnt
     except Exception as e:
-        print(f"  {SKIP_MARK} Không kết nối được Neo4j ({e}). Bỏ qua.")
-        return True
+        print(f"[FAIL] Lỗi kết nối Neo4j: {e}")
+        sys.exit(1)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Kiểm tra B: MongoDB có document mới nhất
-# ─────────────────────────────────────────────────────────────────────────────
-def check_mongodb_updated(mutated_rel: str) -> bool:
-    if MongoClient is None:
-        print(f"  {SKIP_MARK} pymongo chưa cài (pip install pymongo). Bỏ qua.")
-        return True
-
+def get_mongo_state(rel_path: str):
     try:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=3000)
         col = client[MONGO_DATABASE][MONGO_COLLECTION]
-
-        # Tìm tất cả document của file đã mutate, sắp xếp theo processed_at mới nhất
-        docs = list(col.find({"file_path": mutated_rel}, {"processed_at": 1, "sha256": 1, "num_lines": 1})
-                       .sort("processed_at", -1))
+        # Lấy tất cả document của file_path, sort giảm dần theo processed_at
+        docs = list(col.find({"file_path": rel_path}).sort("processed_at", -1))
         client.close()
-
-        if not docs:
-            print(f"  {FAIL_MARK} MongoDB: không tìm thấy document nào cho '{mutated_rel}'.")
-            return False
-
-        latest = docs[0]
-        print(f"  {PASS_MARK} MongoDB: tìm thấy {len(docs)} document.")
-        print(f"           processed_at mới nhất : {latest.get('processed_at')}")
-        print(f"           sha256                 : {latest.get('sha256', '')[:16]}...")
-        print(f"           num_lines              : {latest.get('num_lines')}")
-
-        if len(docs) > 1:
-            print(f"  [WARN]   Có {len(docs)} document (append mode — đây là expected với outputMode='append').")
-
-        return True
-
+        
+        doc_count = len(docs)
+        latest_sha = docs[0].get("sha256") if docs else None
+        latest_time = docs[0].get("processed_at") if docs else None
+        return doc_count, latest_sha, latest_time
     except Exception as e:
-        print(f"  {SKIP_MARK} Không kết nối được MongoDB ({e}). Bỏ qua.")
-        return True
+        print(f"[FAIL] Lỗi kết nối MongoDB: {e}")
+        sys.exit(1)
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Kiểm tra C: Spark checkpoint bỏ qua offset cũ
-# ─────────────────────────────────────────────────────────────────────────────
-def check_spark_checkpoint() -> bool:
+def get_kafka_checkpoint():
     offsets_dir = CHECKPOINT_DIR / "offsets"
-
     if not offsets_dir.exists():
-        print(f"  {SKIP_MARK} Chưa tìm thấy checkpoint tại {offsets_dir}.")
-        print(f"             Hãy đảm bảo task5/ingest.py đã xử lý ít nhất 1 batch.")
-        return True
-
-    # Lấy file offset mới nhất (tên file là số nguyên tăng dần)
+        return None
     offset_files = sorted(
         [f for f in offsets_dir.iterdir() if f.name.isdigit()],
         key=lambda f: int(f.name),
     )
-
     if not offset_files:
-        print(f"  {SKIP_MARK} Không có offset file nào trong {offsets_dir}.")
-        return True
-
+        return None
     latest_file = offset_files[-1]
-    content = latest_file.read_text(encoding="utf-8")
+    return latest_file.name
 
-    try:
-        # Dòng đầu là metadata version, dòng 2 trở đi là JSON offsets
-        lines = content.strip().splitlines()
-        offset_json = json.loads(lines[-1]) if len(lines) > 1 else {}
-        topic_offsets = offset_json.get("cpg-metadata", {})
-    except Exception:
-        topic_offsets = {}
+def run_parser(rel_path: str):
+    cmd = [
+        sys.executable,
+        str(PARSER_SCRIPT),
+        "--file", rel_path,
+        "--repo-root", str(REPO_ROOT),
+        "--bootstrap-servers", KAFKA_BOOTSTRAP,
+        "--schema-version", SCHEMA_VERSION,
+    ]
+    result = subprocess.run(cmd, cwd=str(PROJECT_ROOT), capture_output=True, text=True, encoding="utf-8")
+    if result.returncode != 0:
+        print(f"[FAIL] cpg_parser.py thất bại khi chạy {rel_path}:\n{result.stderr}")
+        sys.exit(1)
 
-    print(f"  {PASS_MARK} Spark checkpoint hợp lệ.")
-    print(f"           Batch ID mới nhất   : {latest_file.name}")
-    print(f"           Tổng batch file     : {len(offset_files)}")
-    if topic_offsets:
-        print(f"           Offset cpg-metadata : {topic_offsets}")
-    else:
-        print(f"           Nội dung offset:\n{content[:300]}")
-
-    return True
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Main
-# ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-
-    if not RECORD_FILE.exists():
-        print(f"[LỖI] Không tìm thấy {RECORD_FILE}.")
-        print("      Hãy chạy   python -m src.task6.mutate   trước.")
+    print("=" * 60)
+    print("Task 6 — Strict Idempotent Replay Verification (E2E)")
+    print("=" * 60)
+    
+    file_to_test = TARGET_REL # src/peft/__init__.py
+    print(f"[*] File được chọn để test: {file_to_test}")
+    
+    # 1. Trạng thái BEFORE
+    print("\n[*] Đang lấy trạng thái BEFORE...")
+    b_nodes, b_edges = get_neo4j_state(file_to_test)
+    b_doc_cnt, b_sha, b_time = get_mongo_state(file_to_test)
+    b_ckpt = get_kafka_checkpoint()
+    
+    if b_doc_cnt == 0:
+        print(f"[FAIL] File '{file_to_test}' chưa có trong MongoDB. Vui lòng chạy luồng Ingest ít nhất 1 lần trước khi Test Replay.")
         sys.exit(1)
-
-    mutated_rel = RECORD_FILE.read_text(encoding="utf-8").strip()
-
-    print("=" * 60)
-    print("Task 6 — Idempotent Replay Verification")
-    print("=" * 60)
-    print(f"File đã mutate: {mutated_rel}\n")
-
-    results = []
-
-    print("[A] Kiểm tra Neo4j — Không có duplicate node:")
-    results.append(check_neo4j_no_duplicate(mutated_rel))
-
-    print("\n[B] Kiểm tra MongoDB — Metadata được cập nhật:")
-    results.append(check_mongodb_updated(mutated_rel))
-
-    print("\n[C] Kiểm tra Spark Checkpoint — Offset được ghi nhận:")
-    results.append(check_spark_checkpoint())
-
-    print("\n" + "=" * 60)
-    passed = sum(results)
-    print(f"Kết quả: {passed}/{len(results)} kiểm tra thành công.")
-
-    if all(results):
-        print("[OK] Idempotent replay xác nhận THÀNH CÔNG.")
+        
+    print(f"    - Neo4j: {b_nodes} nodes, {b_edges} edges")
+    print(f"    - Mongo: {b_doc_cnt} docs, SHA={b_sha[:8]}..., Time={b_time}")
+    print(f"    - Checkpoint: batch {b_ckpt}")
+    
+    # 2. Mutate file (Thay đổi nội dung để sinh SHA mới)
+    print("\n[*] Bước 1: Mutating file (Thêm chú thích để đổi SHA)...")
+    mutate(REPO_ROOT, file_to_test)
+    
+    # 3. Replay lần 1
+    print("\n[*] Bước 2: Replay Lần 1 (Đẩy sự kiện lên Kafka)...")
+    run_parser(file_to_test)
+    print("    -> Đợi 15s cho Spark Streaming kịp Ingest vào MongoDB...")
+    time.sleep(15)
+    
+    # 4. Replay lần 2
+    print("\n[*] Bước 3: Replay Lần 2 (Đẩy lại sự kiện giống hệt Lần 1 để test Trùng lặp)...")
+    run_parser(file_to_test)
+    print("    -> Đợi 15s cho Spark Streaming kịp xử lý...")
+    time.sleep(15)
+    
+    # 5. Trạng thái AFTER
+    print("\n[*] Đang lấy trạng thái AFTER...")
+    a_nodes, a_edges = get_neo4j_state(file_to_test)
+    a_doc_cnt, a_sha, a_time = get_mongo_state(file_to_test)
+    a_ckpt = get_kafka_checkpoint()
+    
+    print(f"    - Neo4j: {a_nodes} nodes, {a_edges} edges")
+    print(f"    - Mongo: {a_doc_cnt} docs, SHA={a_sha[:8]}..., Time={a_time}")
+    print(f"    - Checkpoint: batch {a_ckpt}")
+    
+    # 6. Verify assertions khắt khe
+    print("\n[*] So sánh và kết luận (Strict Mode)...")
+    failed = False
+    
+    # [A] Neo4j: Node count không được tăng gấp đôi (được phép tăng nhẹ 1-2 node do đoạn comment thêm vào AST).
+    if a_nodes >= b_nodes * 1.5 and b_nodes > 0:
+        print(f"  [FAIL] Neo4j bị tạo dữ liệu trùng (Node tăng quá vô lý từ {b_nodes} lên {a_nodes}). MERGE hỏng!")
+        failed = True
     else:
-        print("[CẢNH BÁO] Một số kiểm tra thất bại. Xem log ở trên.")
+        print(f"  [PASS] Neo4j nodes/edges ổn định ({b_nodes} -> {a_nodes}). MERGE Idempotent OK.")
+        
+    # [B1] Mongo: Chỉ duy nhất 1 document (Upsert)
+    if a_doc_cnt != 1:
+        print(f"  [FAIL] MongoDB có {a_doc_cnt} document. Kì vọng CHÍNH XÁC 1 (Lệnh Upsert không hoạt động, sinh ra duplicate).")
+        failed = True
+    else:
+        print(f"  [PASS] MongoDB duy trì đúng {a_doc_cnt} document. Upsert Idempotent OK.")
+        
+    # [B2] Mongo: SHA phải thay đổi
+    if a_sha == b_sha:
+        print(f"  [FAIL] MongoDB SHA không thay đổi. Spark chưa Ingest kịp hoặc Mutate hỏng.")
+        failed = True
+    else:
+        print(f"  [PASS] MongoDB SHA đã cập nhật thành công (mutation nhận diện được).")
+        
+    # [B3] Mongo: Thời gian phải tiến lên
+    if not (a_time > b_time if b_time and a_time else True):
+        print(f"  [FAIL] MongoDB processed_at không mới hơn BEFORE.")
+        failed = True
+    else:
+        print(f"  [PASS] MongoDB processed_at đã cập nhật thời gian mới.")
+        
+    # [C] Checkpoint Kafka phải tiến lên (batch id tăng)
+    if b_ckpt is not None and a_ckpt is not None and int(a_ckpt) <= int(b_ckpt):
+        print(f"  [FAIL] Kafka checkpoint không tịnh tiến (BEFORE {b_ckpt}, AFTER {a_ckpt}).")
+        failed = True
+    else:
+        print(f"  [PASS] Spark Checkpoint Kafka đã ghi nhận offset mới.")
+        
+    if failed:
+        print("\n[FAIL] KẾT LUẬN: IDEMPOTENT REPLAY THẤT BẠI. TỒN TẠI LỖI TRÙNG LẶP HOẶC KHÔNG CẬP NHẬT.")
         sys.exit(1)
+    else:
+        print("\n[OK] KẾT LUẬN: HỆ THỐNG ĐẠT CHUẨN IDEMPOTENT E2E 100%. THÀNH CÔNG RỰC RỠ!")

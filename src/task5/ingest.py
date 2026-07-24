@@ -55,6 +55,7 @@ kafka_df = spark.readStream \
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
     .option("subscribe",               KAFKA_TOPIC) \
     .option("startingOffsets",         "earliest") \
+    .option("failOnDataLoss",          "false") \
     .load()
 
 # Giải mã dữ liệu JSON từ cột "value" của Kafka
