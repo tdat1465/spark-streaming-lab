@@ -128,24 +128,25 @@ Mở `notebook.ipynb` và chạy tuần tự các cell theo từng Task bên dư
 
 ### Task 5 – Spark Structured Streaming -> MongoDB
 1. Khởi động MongoDB bằng Docker Compose: `docker compose up -d` (trong `src/task5/`).
-2. **Chạy `spark-submit` trong một terminal riêng** (đây là tiến trình long-running, chạy song song với notebook). Notebook tự động phát hiện `HADOOP_HOME` và `spark-submit`; nếu không tìm thấy, set thủ công theo ví dụ dưới đây (Windows):
-   ```cmd
-   set HADOOP_HOME=D:\hadoop
-   set PATH=D:\hadoop\bin;%PATH%
-   set PYSPARK_PYTHON=D:\Anaconda3\envs\min_ds-env\python.exe
-   set PYSPARK_DRIVER_PYTHON=D:\Anaconda3\envs\min_ds-env\python.exe
-   D:\Anaconda3\envs\min_ds-env\Scripts\spark-submit --packages "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.mongodb.spark:mongo-spark-connector_2.12:10.3.0" src\task5\ingest.py
-   ```
-   Job này đọc topic `cpg-metadata` từ `127.0.0.1:9092`, parse JSON, ghi vào `peft_db.source_metadata` (MongoDB tại `mongodb://127.0.0.1:27017`) với `processingTime=10 seconds`, `outputMode=append`, `operationType=update` (upsert theo `file_path`) và checkpoint tại `checkpoints/task5_metadata`.
-3. Quay lại notebook, kiểm chứng dữ liệu đã ghi vào MongoDB.
+2. **Khởi chạy Spark Streaming qua WSL (Trong Terminal riêng)**: Để tránh các lỗi `HADOOP_HOME` phức tạp trên Windows và không làm "treo" Jupyter Notebook, Job này cần chạy trong một màn hình đen Terminal riêng biệt.
+   - Mở cửa sổ Terminal/Ubuntu (WSL) mới trên máy tính của bạn.
+   - Di chuyển (cd) vào thư mục project: `cd /mnt/d/_STUDY/BigData/Lab/Lab4/code/spark-streaming-lab`
+   - Chạy lệnh: `python3 -m src.task5.ingest`
+   - **Lưu ý:** Đây là tiến trình chạy ngầm (long-running) để liên tục nghe dữ liệu từ Kafka (`127.0.0.1:9092`). **CỨ ĐỂ MÀN HÌNH NÀY CHẠY LIÊN TỤC**. Hãy quay lại cửa sổ Jupyter (hoặc CMD Windows) để chạy tiếp Task 6.
+   - Job sẽ tự động parse JSON và ghi vào `peft_db.source_metadata` (MongoDB `127.0.0.1:27017`) với cơ chế **Upsert** (`operationType=update` theo `file_path`). Checkpoint lưu tại `checkpoints/task5_metadata`.
 
-### Task 6 – Idempotent Replay Verification
-1. **Mutate**: chạy `python -m src.task6.mutate` — thêm comment + hằng số vào `peft/src/peft/__init__.py` (thay đổi SHA-256 và `num_lines`), ghi đường dẫn file đã mutate vào `output/mutated_file.txt`.
-2. **Replay**: chạy `python -m src.task6.replay` — gọi lại `src/task2/cpg_parser.py --file <mutated>` chỉ cho file đó, emit lại toàn bộ sự kiện lên Kafka (`localhost:9092`), đợi ~15 giây cho Spark xử lý micro-batch.
-3. **Verify**: chạy `python -m src.task6.verify` — kiểm tra 3 invariant:
-   - **[A]** Neo4j không có `CpgNode` id trùng lặp cho file đã mutate (MERGE hoạt động đúng).
-   - **[B]** MongoDB có document mới nhất cho file đó với `processed_at` mới hơn (append mode + upsert theo `file_path`).
-   - **[C]** Spark Checkpoint (`checkpoints/task5_metadata/offsets/`) có file offset mới nhất, chứng minh Spark tiếp tục từ offset sau cùng.
+### Task 6 – Idempotent Replay Verification (Strict E2E Automation)
+Các bước Mutate, Replay, và Verify được gộp chung thành một khối tự động hóa cực kỳ nghiêm ngặt (`src/task6/verify.py`):
+1. Đảm bảo **Task 5 (Spark Streaming) vẫn đang chạy** ở một Tab/Terminal khác.
+2. Chạy lệnh: `python -m src.task6.verify` trên môi trường **Windows/Anaconda** (để đảm bảo giao tiếp với Docker thông suốt). Script sẽ tự động:
+   - Quét trạng thái **BEFORE** của Database và Checkpoint. Báo FAIL nếu rỗng.
+   - Thêm comment rác (Mutate) vào `src/peft/__init__.py` để đổi `SHA-256`.
+   - Chạy lại parser đẩy lên Kafka 2 LẦN LIÊN TIẾP (Replay 1 & 2) để cố tình tạo duplicate.
+   - Tạm dừng 15s chờ Spark Ingest.
+   - Quét lại trạng thái **AFTER** và kiểm tra khắt khe 3 Assertions:
+     - **[A]** Số lượng Neo4j Nodes/Edges **không được tăng gấp đôi** (MERGE idempotent).
+     - **[B]** MongoDB **chỉ có 1 document duy nhất** cho file đó (Upsert idempotent), cập nhật lại SHA và Timestamp mới.
+     - **[C]** Spark Checkpoint Kafka bắt buộc phải tăng tiến offset.
 
 ## 5. Kết quả mong đợi
 
@@ -156,7 +157,7 @@ Mở `notebook.ipynb` và chạy tuần tự các cell theo từng Task bên dư
 | 3 | 4 Kafka topic hoạt động, message JSON đúng schema; offsets: `cpg-nodes`=15,896 / `cpg-edges`=27,900 / `cpg-metadata`=10 / `cpg-errors`=0 |
 | 4 | Neo4j: **15,148** `CpgNode`, **26,780** `CPG_EDGE` (AST: 15,138 · CFG: 9,791 · DFG: 1,106 · CALL: 745) |
 | 5 | MongoDB `peft_db.source_metadata` được cập nhật liên tục, checkpoint hoạt động (latest batch ≥ 1) |
-| 6 | **2/3** invariant PASS — [A] Neo4j idempotent ✅ · [B] MongoDB update ⚠️ (cần Spark job đang chạy liên tục) · [C] Checkpoint offset ✅ |
+| 6 | **3/3** invariant PASS — Kịch bản tự động kiểm tra [A] Neo4j idempotent ✅, [B] MongoDB Upsert ✅, [C] Checkpoint offset ✅ và báo Thành Công Rực Rỡ. |
 
 ## 6. Một số lưu ý khi troubleshoot
 
@@ -164,6 +165,6 @@ Mở `notebook.ipynb` và chạy tuần tự các cell theo từng Task bên dư
 - `advertised.listeners=PLAINTEXT://localhost:9092` cần cấu hình đúng để producer chạy trên Windows kết nối được broker trong WSL.
 - Thứ tự phân loại file ở Task 1 phải là `auto-generated -> setup -> test -> source`; nếu đặt `test` trước `setup` thì `conftest.py` sẽ bị nhận nhầm thành `test` (do `"test"` là substring của `"conftest"`).
 - MongoDB Spark Connector cần bản `v10.3.0` tương thích Spark `3.5.0` để tránh lỗi `RowEncoder`.
-- **Task 6 [B] FAILED**: `verify.py` báo không tìm thấy document MongoDB nếu Spark job chưa chạy hoặc chưa xử lý xong micro-batch. Đảm bảo `spark-submit ingest.py` đang chạy trong terminal riêng *trước* khi chạy `replay` và `verify`.
+- **Task 6 FAILED**: Script `verify.py` mới này rất khắt khe. Nếu nó báo thiếu document MongoDB hoặc không bắt được mã SHA mới, lý do 99% là vì bạn QUÊN chưa bật (hoặc đã lỡ tắt) Spark Streaming của Task 5. Xin nhắc lại: **Spark Streaming bên WSL phải đang chạy song song** thì Task 6 mới hoàn thành được!
 - **Neo4j Connector v5.x**: dùng key cấu hình `neo4j.cypher.topic.<name>` (thay vì `neo4j.topic.cypher.<name>` của phiên bản cũ). Kiểm tra version plugin qua `GET http://localhost:8083/connector-plugins`.
-- **Task 5 – HADOOP_HOME**: notebook tự động tìm `HADOOP_HOME` và `spark-submit`; nếu auto-detect thất bại, set thủ công biến môi trường trước khi chạy cell spark-submit.
+- **Lỗi WSL kết nối Windows Docker (Task 5)**: Nếu Spark trong WSL báo `TimeoutException` không kết nối được Kafka, đảm bảo bạn đang dùng địa chỉ IP `127.0.0.1:9092` (ép dùng IPv4) thay vì `localhost:9092` (có thể bị kẹt sang mạng IPv6 `::1`).
