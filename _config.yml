@@ -1,0 +1,39 @@
+# Book settings
+title: "Lab 04: Spark Streaming – Incremental CPG Pipeline"
+author: "Nhóm CDHD (Phan Thị Phương Chi, Trần Thanh Đạt, Phạm Ngọc Duy, Lê Hoàng Mỹ Hạ)"
+copyright: "2026, CDHD Team"
+
+repository:
+  url: "https://github.com/tdat1465/spark-streaming-lab"
+  branch: "master"
+
+execute:
+  execute_notebooks: "off"
+
+html:
+  use_issues_button: false
+  use_repository_button: true
+  home_page_in_navbar: true
+  baseurl: "https://tdat1465.github.io/spark-streaming-lab"
+
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - dollarmath
+    - html_image
+    - linkify
+
+sphinx:
+  config:
+    html_extra_path: ["images"]
+    exclude_patterns:
+      - "peft/**"
+      - "checkpoints/**"
+      - "scratch/**"
+      - "_build/**"
+      - "scripts/**"
+      - "run_notebook.py"
+      - "notebook.ipynb"
+      - "*Lab04*"
+      - "*.pdf"
+      - "README.md"
